@@ -22,7 +22,7 @@ class Telegram(object):
     Also is able to start the CLI, and stop it respectivly.
     """
 
-    def __init__(self, host="127.0.0.1", port=4458, telegram=None, pubkey_file=None, custom_cli_args=None):
+    def __init__(self, host="127.0.0.1", port=4458, telegram=None, pubkey_file=None, custom_cli_args=None, proxychains=False):
         from .sender import Sender
         from .receiver import Receiver
         self._proc = None
@@ -30,7 +30,7 @@ class Telegram(object):
             if host not in ["127.0.0.1", "localhost", "", None]:
                 raise ValueError("Can only start the cli at localhost. You may not provide a different host.")
             host = "127.0.0.1"
-            self.start_cli(telegram=telegram, pubkey_file=pubkey_file, custom_cli_args=custom_cli_args, port=port)
+            self.start_cli(telegram=telegram, pubkey_file=pubkey_file, custom_cli_args=custom_cli_args, port=port, proxychains=proxychains)
         elif telegram is not None or pubkey_file is not None or custom_cli_args is not None:
             logger.warn("cli related parameter given, but not cli and pubkey path not present.")
         self.sender = Sender(host=host, port=port)
@@ -51,7 +51,7 @@ class Telegram(object):
         else:
             raise AssertionError("CLI Process died.")
 
-    def start_cli(self, telegram=None, pubkey_file=None, custom_cli_args=None, port=4458):
+    def start_cli(self, telegram=None, pubkey_file=None, custom_cli_args=None, port=4458, proxychains=False):
         """
         Start the telegram process.
 
@@ -73,11 +73,18 @@ class Telegram(object):
             os.setpgrp()
 
         atexit.register(self.stop_cli)
-        args = [
-            self._tg_cli, '-R', '-W', '-P', str(port),
-            '-k', self._public_key_file, '--json',
-            '--permanent-peer-ids', '--permanent-peer-ids',
-        ]
+        if proxychains is True:
+            args = [
+                'proxychains', self._tg_cli, '-R', '-W', '-P', str(port),
+                '-k', self._public_key_file, '--json',
+                '--permanent-peer-ids', '--permanent-peer-ids',
+            ] 
+        else:
+            args = [
+                self._tg_cli, '-R', '-W', '-P', str(port),
+                '-k', self._public_key_file, '--json',
+                '--permanent-peer-ids', '--permanent-peer-ids',
+            ]
         if custom_cli_args is not None:
             if not isinstance(custom_cli_args, (list, tuple)):
                 raise TypeError("custom_cli_args should be a list or a tuple.")
